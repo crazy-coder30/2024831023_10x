@@ -44,9 +44,8 @@ int main(int argc, char *argv[])
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, nullptr);
 
-    // Circle starts at the center of the window
-    float centerX = SCREEN_WIDTH / 2.0f;  // 400
-    float centerY = SCREEN_HEIGHT / 2.0f; // 300
+    float centerX = SCREEN_WIDTH / 2.0f;
+    float centerY = SCREEN_HEIGHT / 2.0f;
     float radius = STARTING_RADIUS;
 
     bool running = true;
@@ -55,7 +54,6 @@ int main(int argc, char *argv[])
     while (running)
     {
 
-        // Handle events
         while (SDL_PollEvent(&event))
         {
             if (event.type == SDL_EVENT_QUIT)
@@ -69,7 +67,7 @@ int main(int argc, char *argv[])
 
         if (circleHitsWall(centerX, centerY, radius))
         {
-            radius = STARTING_RADIUS; // reset back to small
+            radius = STARTING_RADIUS;
             cout << "Hit the wall! Resetting radius." << endl;
         }
 
