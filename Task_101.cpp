@@ -5,7 +5,7 @@ using namespace std;
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
-const int CIRCLE_RADIUS = 100;
+const int CIRCLE_RADIUS = 200;
 
 void drawFilledCircle(SDL_Renderer *renderer, int centerX, int centerY, int radius)
 {
