@@ -1,4 +1,5 @@
 #include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <iostream>
 #include <deque>
 #include <cstdlib>
@@ -6,10 +7,10 @@
 #include <string>
 
 const int CELL_SIZE     = 20;
-const int GRID_W        = 50;
-const int GRID_H        = 50;
+const int GRID_W        = 40;
+const int GRID_H        = 40;
 const int WINDOW_W      = CELL_SIZE * GRID_W;
-const int WINDOW_H      = CELL_SIZE * GRID_H + 50; 
+const int WINDOW_H      = CELL_SIZE * GRID_H + 50; // +50 for score bar
 const int MOVE_INTERVAL = 100;
 
 enum class Direction { UP, DOWN, LEFT, RIGHT };
@@ -22,6 +23,8 @@ struct Point {
     }
 };
 
+
+//  SNAKE CLASS
 
 class Snake {
 public:
@@ -48,20 +51,17 @@ public:
             case Direction::LEFT:  newHead.x -= 1; break;
             case Direction::RIGHT: newHead.x += 1; break;
         }
-        newHead.x=(newHead.x + GRID_W) % GRID_W;
-        newHead.y=(newHead.y + GRID_H) % GRID_H;
+
         body.push_front(newHead);
         if (!grew) body.pop_back();
         grew = false;
     }
 
-    
     bool hitWall() const {
         Point h = head();
         return h.x < 0 || h.x >= GRID_W || h.y < 0 || h.y >= GRID_H;
     }
 
-    
     bool hitSelf() const {
         Point h = head();
         for (size_t i = 1; i < body.size(); ++i)
@@ -78,149 +78,18 @@ public:
     }
 };
 
-
-// Each digit: 5 rows of 3 bits (1 = filled, 0 = empty)
-static const bool DIGITS[10][5][3] = {
-    // 0
-    {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}},
-    // 1
-    {{0,1,0},{1,1,0},{0,1,0},{0,1,0},{1,1,1}},
-    // 2
-    {{1,1,1},{0,0,1},{1,1,1},{1,0,0},{1,1,1}},
-    // 3
-    {{1,1,1},{0,0,1},{0,1,1},{0,0,1},{1,1,1}},
-    // 4
-    {{1,0,1},{1,0,1},{1,1,1},{0,0,1},{0,0,1}},
-    // 5
-    {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1}},
-    // 6
-    {{1,1,1},{1,0,0},{1,1,1},{1,0,1},{1,1,1}},
-    // 7
-    {{1,1,1},{0,0,1},{0,1,0},{0,1,0},{0,1,0}},
-    // 8
-    {{1,1,1},{1,0,1},{1,1,1},{1,0,1},{1,1,1}},
-    // 9
-    {{1,1,1},{1,0,1},{1,1,1},{0,0,1},{1,1,1}},
-};
-
-
-void drawDigit(SDL_Renderer* renderer, int digit, int px, int py, int dotSize) {
-    for (int row = 0; row < 5; ++row) {
-        for (int col = 0; col < 3; ++col) {
-            if (DIGITS[digit][row][col]) {
-                SDL_FRect r = {
-                    (float)(px + col * dotSize),
-                    (float)(py + row * dotSize),
-                    (float)(dotSize - 1),
-                    (float)(dotSize - 1)
-                };
-                SDL_RenderFillRect(renderer, &r);
-            }
-        }
-    }
-}
-
-
-int drawNumber(SDL_Renderer* renderer, int number, int px, int py, int dotSize) {
-    std::string s = std::to_string(number);
-    int digitWidth = 3 * dotSize + 4; // 3 cols + 4px gap
-    for (char c : s) {
-        drawDigit(renderer, c - '0', px, py, dotSize);
-        px += digitWidth;
-    }
-    return px;
-}
-
-// Drawing simple letters using rectangles : just the ones needed : S,C,O,R,E,H,I,G,V,T,A,P,W,L,S
-
-
-static const bool LETTER_S[5][3] = {{1,1,1},{1,0,0},{1,1,1},{0,0,1},{1,1,1}};
-static const bool LETTER_C[5][3] = {{1,1,1},{1,0,0},{1,0,0},{1,0,0},{1,1,1}};
-static const bool LETTER_O[5][3] = {{1,1,1},{1,0,1},{1,0,1},{1,0,1},{1,1,1}};
-static const bool LETTER_R[5][3] = {{1,1,0},{1,0,1},{1,1,0},{1,0,1},{1,0,1}};
-static const bool LETTER_E[5][3] = {{1,1,1},{1,0,0},{1,1,0},{1,0,0},{1,1,1}};
-static const bool LETTER_H[5][3] = {{1,0,1},{1,0,1},{1,1,1},{1,0,1},{1,0,1}};
-static const bool LETTER_I[5][3] = {{1,1,1},{0,1,0},{0,1,0},{0,1,0},{1,1,1}};
-static const bool LETTER_G[5][3] = {{1,1,1},{1,0,0},{1,0,1},{1,0,1},{1,1,1}};
-static const bool LETTER_A[5][3] = {{0,1,0},{1,0,1},{1,1,1},{1,0,1},{1,0,1}};
-static const bool LETTER_M[5][3] = {{1,0,1},{1,1,1},{1,0,1},{1,0,1},{1,0,1}};
-static const bool LETTER_V[5][3] = {{1,0,1},{1,0,1},{1,0,1},{1,0,1},{0,1,0}};
-static const bool LETTER_P[5][3] = {{1,1,1},{1,0,1},{1,1,1},{1,0,0},{1,0,0}};
-static const bool LETTER_T[5][3] = {{1,1,1},{0,1,0},{0,1,0},{0,1,0},{0,1,0}};
-static const bool LETTER_W[5][3] = {{1,0,1},{1,0,1},{1,1,1},{1,1,1},{1,0,1}};
-static const bool LETTER_N[5][3] = {{1,0,1},{1,1,1},{1,1,1},{1,0,1},{1,0,1}};
-static const bool LETTER_COLON[5][1] = {{0},{1},{0},{1},{0}};
-
-void drawBitmap(SDL_Renderer* renderer, const bool bmp[][3], int rows,
-                int px, int py, int dotSize) {
-    for (int row = 0; row < rows; ++row)
-        for (int col = 0; col < 3; ++col)
-            if (bmp[row][col]) {
-                SDL_FRect r = {
-                    (float)(px + col * dotSize),
-                    (float)(py + row * dotSize),
-                    (float)(dotSize - 1),
-                    (float)(dotSize - 1)
-                };
-                SDL_RenderFillRect(renderer, &r);
-            }
-}
-
-
-void drawColon(SDL_Renderer* renderer, int px, int py, int dotSize) {
-    SDL_FRect top = { (float)(px + dotSize/2), (float)(py + 1*dotSize), (float)(dotSize-1), (float)(dotSize-1) };
-    SDL_FRect bot = { (float)(px + dotSize/2), (float)(py + 3*dotSize), (float)(dotSize-1), (float)(dotSize-1) };
-    SDL_RenderFillRect(renderer, &top);
-    SDL_RenderFillRect(renderer, &bot);
-}
-
-
-int drawLetter(SDL_Renderer* renderer, char c, int px, int py, int dotSize) {
-    int w = 3 * dotSize + 4;
-    switch (c) {
-        case 'S': drawBitmap(renderer, LETTER_S, 5, px, py, dotSize); break;
-        case 'C': drawBitmap(renderer, LETTER_C, 5, px, py, dotSize); break;
-        case 'O': drawBitmap(renderer, LETTER_O, 5, px, py, dotSize); break;
-        case 'R': drawBitmap(renderer, LETTER_R, 5, px, py, dotSize); break;
-        case 'E': drawBitmap(renderer, LETTER_E, 5, px, py, dotSize); break;
-        case 'H': drawBitmap(renderer, LETTER_H, 5, px, py, dotSize); break;
-        case 'I': drawBitmap(renderer, LETTER_I, 5, px, py, dotSize); break;
-        case 'G': drawBitmap(renderer, LETTER_G, 5, px, py, dotSize); break;
-        case 'A': drawBitmap(renderer, LETTER_A, 5, px, py, dotSize); break;
-        case 'M': drawBitmap(renderer, LETTER_M, 5, px, py, dotSize); break;
-        case 'V': drawBitmap(renderer, LETTER_V, 5, px, py, dotSize); break;
-        case 'P': drawBitmap(renderer, LETTER_P, 5, px, py, dotSize); break;
-        case 'T': drawBitmap(renderer, LETTER_T, 5, px, py, dotSize); break;
-        case 'W': drawBitmap(renderer, LETTER_W, 5, px, py, dotSize); break;
-        case 'N': drawBitmap(renderer, LETTER_N, 5, px, py, dotSize); break;
-        case ':': drawColon(renderer, px, py, dotSize); w = dotSize + 4;  break;
-        default: break;
-    }
-    return px + w;
-}
-
-
-int drawString(SDL_Renderer* renderer, const char* str,
-               int px, int py, int dotSize) {
-    while (*str) {
-        px = drawLetter(renderer, *str, px, py, dotSize);
-        ++str;
-    }
-    return px;
-}
-
-
 //  GAME CLASS
 
 class Game {
 public:
     SDL_Window*   window   = nullptr;
     SDL_Renderer* renderer = nullptr;
+    TTF_Font*     font     = nullptr;  
 
     Snake  snake;
     Point  food;
     int    score     = 0;
-    int    highScore = 0;   
+    int    highScore = 0;
     bool   running   = false;
     bool   gameOver  = false;
 
@@ -230,6 +99,12 @@ public:
     bool init() {
         if (!SDL_Init(SDL_INIT_VIDEO)) {
             std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n";
+            return false;
+        }
+
+        // Initialize SDL3_ttf
+        if (!TTF_Init()) {
+            std::cerr << "TTF_Init failed: " << SDL_GetError() << "\n";
             return false;
         }
 
@@ -247,6 +122,13 @@ public:
 
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
+       
+        font = TTF_OpenFont("C:/Windows/Fonts/arialbd.ttf", 24);
+        if (!font) {
+            std::cerr << "TTF_OpenFont failed: " << SDL_GetError() << "\n";
+            return false;
+        }
+
         srand(static_cast<unsigned>(time(nullptr)));
         spawnFood();
 
@@ -256,7 +138,27 @@ public:
         return true;
     }
 
-    // Food
+    
+    void drawText(const std::string& text, int x, int y, SDL_Color color) {
+        
+        SDL_Surface* surface = TTF_RenderText_Blended(font, text.c_str(), 0, color);
+        if (!surface) return;
+
+        // Convert surface to texture
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_DestroySurface(surface);   
+        if (!texture) return;
+
+        // Get size and draw
+        float w, h;
+        SDL_GetTextureSize(texture, &w, &h);
+        SDL_FRect dst = { (float)x, (float)y, w, h };
+        SDL_RenderTexture(renderer, texture, nullptr, &dst);  
+        SDL_DestroyTexture(texture);
+    }
+
+    //  FOOD
+   
     void spawnFood() {
         Point candidate;
         do {
@@ -272,7 +174,7 @@ public:
         return false;
     }
 
-   
+    
     void handleInput() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -284,7 +186,7 @@ public:
                 SDL_Keycode key = event.key.key;
 
                 if (gameOver) {
-                    if (key == SDLK_R) restartGame();
+                    if (key == SDLK_R)      restartGame();
                     if (key == SDLK_ESCAPE) running = false;
                     return;
                 }
@@ -310,14 +212,9 @@ public:
 
         snake.move();
 
+        if (snake.hitWall()) { triggerGameOver(); return; }
+        if (snake.hitSelf()) { triggerGameOver(); return; }
 
-        // SELF COLLISION 
-        if (snake.hitSelf()) {
-            triggerGameOver();
-            return;
-        }
-
-        // EAT FOOD
         if (snake.head() == food) {
             snake.grew = true;
             score++;
@@ -325,18 +222,14 @@ public:
         }
     }
 
-    
+   
     void triggerGameOver() {
         gameOver = true;
         if (score > highScore)
             highScore = score;
-        
-        std::string t = "Snake | GAME OVER | Score: " + std::to_string(score)
-                      + " | Best: " + std::to_string(highScore);
-        SDL_SetWindowTitle(window, t.c_str());
     }
 
-   
+    
     void drawCell(int gx, int gy) {
         SDL_FRect rect = {
             (float)(gx * CELL_SIZE + 1),
@@ -347,134 +240,91 @@ public:
         SDL_RenderFillRect(renderer, &rect);
     }
 
+    //  SCORE BAR
     
     void renderScoreBar() {
-        int barY = GRID_H * CELL_SIZE;  
+        int barY = GRID_H * CELL_SIZE;
 
-        
+        // Background
         SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
         SDL_FRect bg = { 0, (float)barY, (float)WINDOW_W, 50.0f };
         SDL_RenderFillRect(renderer, &bg);
 
-       
+        // Separator line
         SDL_SetRenderDrawColor(renderer, 60, 60, 60, 255);
         SDL_RenderLine(renderer, 0, barY, WINDOW_W, barY);
 
-        int dotSize = 5;  
-        int textY   = barY + 10;
+        // Score text : gold color
+        SDL_Color gold = { 255, 215, 0, 255 };
+        drawText("SCORE: " + std::to_string(score), 10, barY + 12, gold);
 
-        // SCORE label + number
-        SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255);   // gold
-        int x = drawString(renderer, "SCORE:", 10, textY, dotSize);
-        x += 6;
-        drawNumber(renderer, score, x, textY, dotSize);
-
-        // HI label + number
-        SDL_SetRenderDrawColor(renderer, 100, 220, 255, 255);  // cyan
-        int hiX = WINDOW_W / 2 + 10;
-        int x2  = drawString(renderer, "HI:", hiX, textY, dotSize);
-        x2 += 6;
-        drawNumber(renderer, highScore, x2, textY, dotSize);
+        // High score text : cyan color
+        SDL_Color cyan = { 100, 220, 255, 255 };
+        drawText("HIGH SCORE: " + std::to_string(highScore), WINDOW_W / 2 + 10, barY + 12, cyan);
     }
 
-    // Game Over Overlay
+    //  GAME OVER SCREEN
+    
     void renderGameOver() {
-        
+        // Dark overlay
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 170);
         SDL_FRect overlay = { 0, 0, (float)WINDOW_W, (float)(GRID_H * CELL_SIZE) };
         SDL_RenderFillRect(renderer, &overlay);
 
-        
-        float bx = WINDOW_W / 2.0f - 130.0f;
-        float by = GRID_H * CELL_SIZE / 2.0f - 80.0f;
-        float bw = 260.0f;
-        float bh = 160.0f;
+        // Centre box
+        float bx = WINDOW_W / 2.0f - 140.0f;
+        float by = GRID_H * CELL_SIZE / 2.0f - 100.0f;
 
-        
+        // Box shadow
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
-        SDL_FRect shadow = { bx + 4, by + 4, bw, bh };
+        SDL_FRect shadow = { bx + 4, by + 4, 280.0f, 210.0f };
         SDL_RenderFillRect(renderer, &shadow);
 
-       
+        // Box fill
         SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
-        SDL_FRect box = { bx, by, bw, bh };
+        SDL_FRect box = { bx, by, 280.0f, 210.0f };
         SDL_RenderFillRect(renderer, &box);
 
-        
+        // Box border : red
         SDL_SetRenderDrawColor(renderer, 220, 50, 50, 255);
         SDL_FRect borders[4] = {
-            { bx,          by,          bw,   2 },     // top
-            { bx,          by + bh - 2, bw,   2 },     // bottom
-            { bx,          by,          2,    bh },    // left
-            { bx + bw - 2, by,          2,    bh }     // right
+            { bx,           by,            260.0f, 2.0f },
+            { bx,           by + 210.0f,   260.0f, 2.0f },
+            { bx,           by,            2.0f,   210.0f },
+            { bx + 278.0f,  by,            2.0f,   210.0f }
         };
         for (auto& b : borders) SDL_RenderFillRect(renderer, &b);
 
-        int dotSize = 5;
+        // Text : all using drawText()
+        SDL_Color red    = { 220,  50,  50, 255 };
+        SDL_Color gold   = { 255, 215,   0, 255 };
+        SDL_Color cyan   = { 100, 220, 255, 255 };
+        SDL_Color grey   = { 160, 160, 160, 255 };
 
-        
-        SDL_SetRenderDrawColor(renderer, 220, 50, 50, 255);   // red
-        
-        int goX = (int)bx + 14;
-        int goY = (int)by + 14;
-        goX = drawString(renderer, "GAME", goX, goY, dotSize);
-        goX += 8;
-        drawString(renderer, "OVER", goX, goY, dotSize);
-
-        
-        SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255);
-        SDL_RenderLine(renderer,
-            (int)bx + 10, (int)by + 46,
-            (int)bx + (int)bw - 10, (int)by + 46);
-
-        
-        SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255);   // gold
-        int sx = (int)bx + 14;
-        int sy = (int)by + 55;
-        int nx = drawString(renderer, "SCORE:", sx, sy, dotSize);
-        nx += 6;
-        drawNumber(renderer, score, nx, sy, dotSize);
-
-        
-        SDL_SetRenderDrawColor(renderer, 100, 220, 255, 255);  // cyan
-        int hy = (int)by + 82;
-        int hx = drawString(renderer, "HI:", (int)bx + 14, hy, dotSize);
-        hx += 6;
-        drawNumber(renderer, highScore, hx, hy, dotSize);
-
-       
-        SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255);
-        SDL_RenderLine(renderer,
-            (int)bx + 10, (int)by + 108,
-            (int)bx + (int)bw - 10, (int)by + 108);
-
-        
-        SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);  // grey
-        int px2 = (int)bx + 14;
-        int py2 = (int)by + 118;
-        px2 = drawString(renderer, "PRESS", px2, py2, dotSize);
-        px2 += 8;
-        drawString(renderer, "R", px2, py2, dotSize);
+        drawText("GAME OVER",                        (int)bx + 55, (int)by + 18,  red);
+        drawText("SCORE: " + std::to_string(score),  (int)bx + 14, (int)by + 72,  gold);
+        drawText("HIGH SCORE:  " + std::to_string(highScore), (int)bx + 14, (int)by + 112,  cyan);
+        drawText("PRESS R TO RESTART",               (int)bx + 14, (int)by + 155, grey);
     }
 
     
     void render() {
-       
+        // Background
         SDL_SetRenderDrawColor(renderer, 15, 15, 15, 255);
         SDL_RenderClear(renderer);
 
-        
+        // Grid lines
         SDL_SetRenderDrawColor(renderer, 28, 28, 28, 255);
         for (int x = 0; x <= GRID_W; ++x)
             SDL_RenderLine(renderer, x*CELL_SIZE, 0, x*CELL_SIZE, GRID_H*CELL_SIZE);
         for (int y = 0; y <= GRID_H; ++y)
             SDL_RenderLine(renderer, 0, y*CELL_SIZE, WINDOW_W, y*CELL_SIZE);
 
-        // Food
+        // Food : red
         SDL_SetRenderDrawColor(renderer, 220, 50, 50, 255);
         drawCell(food.x, food.y);
 
-        // Snake : bright head to dark tail
+        // Snake : from bright head to dark tail
         int len = (int)snake.body.size();
         for (int i = 0; i < len; ++i) {
             float t     = (len <= 1) ? 1.0f : 1.0f - (float)i / (float)(len - 1);
@@ -485,10 +335,9 @@ public:
             drawCell(snake.body[i].x, snake.body[i].y);
         }
 
-        
+        // Score bar at bottom
         renderScoreBar();
 
-       
         if (gameOver) renderGameOver();
 
         SDL_RenderPresent(renderer);
@@ -496,15 +345,15 @@ public:
 
     
     void restartGame() {
-        snake    = Snake();
-        score    = 0;
-        gameOver = false;
+        snake        = Snake();
+        score        = 0;
+        gameOver     = false;
         lastMoveTime = SDL_GetTicks();
         spawnFood();
-        SDL_SetWindowTitle(window, "Snake Game");
     }
 
-   
+    //  MAIN LOOP
+    
     void run() {
         while (running) {
             handleInput();
@@ -514,10 +363,12 @@ public:
         }
     }
 
-   
+    
     void cleanup() {
+        if (font)     TTF_CloseFont(font);
         if (renderer) SDL_DestroyRenderer(renderer);
         if (window)   SDL_DestroyWindow(window);
+        TTF_Quit();
         SDL_Quit();
     }
 };
