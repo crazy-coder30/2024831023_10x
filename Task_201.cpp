@@ -48,7 +48,8 @@ public:
             case Direction::LEFT:  newHead.x -= 1; break;
             case Direction::RIGHT: newHead.x += 1; break;
         }
-
+        newHead.x=(newHead.x + GRID_W) % GRID_W;
+        newHead.y=(newHead.y + GRID_H) % GRID_H;
         body.push_front(newHead);
         if (!grew) body.pop_back();
         grew = false;
@@ -309,11 +310,6 @@ public:
 
         snake.move();
 
-        // WALL COLLISION 
-        if (snake.hitWall()) {
-            triggerGameOver();
-            return;
-        }
 
         // SELF COLLISION 
         if (snake.hitSelf()) {
